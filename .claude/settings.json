@@ -1,7 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(npx --cache /tmp/npm-cache shadcn@latest init -d)"
-    ]
-  }
-}

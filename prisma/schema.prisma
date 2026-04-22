@@ -1,0 +1,104 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Project {
+  id          String         @id @default(cuid())
+  name        String
+  description String?
+  coverUrl    String?
+  status      String         @default("draft")
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  projectAssets ProjectAsset[]
+  jobs          Job[]
+  workflows     Workflow[]
+}
+
+model AssetFolder {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+
+  assets Asset[]
+}
+
+model Asset {
+  id          String      @id @default(cuid())
+  name        String
+  description String?
+  tag         String?     // character, scene, audio, video
+  folderId    String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  folder        AssetFolder?   @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  files         AssetFile[]
+  projectAssets ProjectAsset[]
+}
+
+model AssetFile {
+  id        String   @id @default(cuid())
+  assetId   String
+  name      String   // 原始文件名
+  url       String   // /uploads/2026/04/16/uuid.jpg
+  type      String   // image, video
+  size      Int?     // 文件大小 bytes
+  width     Int?
+  height    Int?
+  createdAt DateTime @default(now())
+
+  asset Asset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+}
+
+model ProjectAsset {
+  id              String   @id @default(cuid())
+  projectId       String
+  assetId         String
+  role            String?  // 项目内角色：主角、配角、场景等
+  selectedFileIds String   @default("[]") // 当前项目中显示的文件ID列表（JSON）
+  createdAt       DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  asset   Asset   @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, assetId])
+}
+
+model Workflow {
+  id        String   @id @default(cuid())
+  projectId String
+  name      String
+  nodes     String   @default("[]")
+  edges     String   @default("[]")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model Job {
+  id        String   @id @default(cuid())
+  projectId String
+  type      String
+  params    String   @default("{}")
+  status    String   @default("pending")
+  resultUrl String?
+  errorMsg  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model Setting {
+  id    String @id @default(cuid())
+  key   String @unique
+  value String
+}

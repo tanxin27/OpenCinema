@@ -1,0 +1,180 @@
+# OpenCinema - AI 视频生成工作流平台
+
+OpenCinema 是一个基于 Next.js + AI 的视频/图片生成工作流平台。支持项目管理、资产库管理、多素材引用生成视频等功能。
+
+## 功能特性
+
+- **项目管理**：创建和管理多个 AI 视频生成项目
+- **资产库**：支持角色、场景、音频、视频等分类的资产管理和文件夹组织
+- **多素材引用生成**：在提示词中通过 `@图片1`、`@视频1` 等方式引用已上传素材
+- **素材冻结/解冻**：临时禁用某些素材，无需反复删除添加
+- **拖拽上传**：支持拖拽文件直接添加到生成区
+- **生成任务队列**：异步任务管理，支持重试和状态追踪
+- **快捷短语**：可自定义常用提示词短语，一键插入
+
+## 系统要求
+
+- Node.js 18+
+- npm 或 pnpm
+- SQLite（内置，无需额外安装）
+
+## 快速开始（推荐）
+
+```bash
+# 1. 一键初始化（安装依赖、创建数据库、生成配置）
+bash scripts/setup.sh
+
+# 2. 配置 API Key（编辑 .env 文件，或启动后在设置页配置）
+
+# 3. 一键启动
+bash scripts/start.sh
+```
+
+打开浏览器访问 `http://localhost:3000`。
+
+> **获取 API Key**：前往 [火山引擎方舟平台](https://www.volcengine.com/product/ark) 申请 DREAMINA / Seedance API Key。
+
+---
+
+## 手动安装（备选）
+
+如果你不想使用一键脚本，也可以手动执行：
+
+### 1. 安装依赖
+
+```bash
+npm install
+```
+
+### 2. 配置环境变量
+
+在项目根目录创建 `.env` 文件：
+
+```env
+DATABASE_URL="file:./prisma/dev.db"
+DREAMINA_API_KEY="你的API密钥"
+```
+
+### 3. 初始化数据库
+
+```bash
+npx prisma migrate dev --name init
+npx prisma generate
+```
+
+### 4. 启动开发服务器
+
+```bash
+npm run dev
+```
+
+### 5. 配置 API Key（首次使用）
+
+进入 **设置** 页面，填写 `DREAMINA_API_KEY`，保存后即可开始生成视频。
+
+## 项目结构
+
+```
+app/
+  (dashboard)/          # 仪表盘页面（概览、项目、资产、设置）
+  (editor)/             # 编辑器页面（视频生成）
+  api/                  # API 路由
+components/
+  ui/                   # shadcn/ui 组件
+  safe-image.tsx        # 安全图片组件（文件缺失时显示占位）
+lib/
+  store.ts              # Zustand 全局状态
+  storage.ts            # 文件上传存储
+  prisma.ts             # Prisma 客户端
+  settings.ts           # 设置管理
+prisma/
+  schema.prisma         # 数据库模型定义
+public/uploads/         # 用户上传文件存储目录
+scripts/
+  prepare-for-share.sh  # 发布前清理脚本
+  setup.sh              # 一键初始化脚本
+  start.sh              # 一键启动脚本
+```
+
+## 核心页面说明
+
+### 概览页 (`/`)
+项目、资产、任务的数量统计，以及最近项目的快捷入口。
+
+### 项目页 (`/projects`)
+- 创建新项目（支持封面图上传）
+- 查看和删除项目
+- 点击进入项目编辑器
+
+### 资产库 (`/assets`)
+- **文件夹管理**：左侧栏创建/选择文件夹，资产按文件夹归类
+- **资产标签**：角色、场景、音频、视频、其他
+- **资产创建**：填写名称、选择文件夹和标签、上传文件
+- **资产详情**：点击资产卡片查看详情、追加文件
+
+### 项目编辑器 (`/projects/:id`)
+- **左侧资产栏**：按角色分类显示项目关联的资产文件，支持一键添加到生成区
+- **提示词编辑区**：支持分栏输入（风格控制、角色设定、场景设计、分镜脚本、负面提示词）
+- **素材引用**：在任意文本框输入 `@` 可引用已上传的素材
+- **素材冻结**：点击素材缩略图上的雪花图标冻结，冻结的素材不会被引用也不会参与生成
+- **拖拽上传**：拖拽文件到提示词区域即可添加临时素材
+- **生成参数**：模型、比例、时长、画质、音频、水印
+- **快捷短语**：右侧栏管理常用短语，一键插入当前输入框
+
+### 设置页 (`/settings`)
+- `DREAMINA_API_KEY`：AI 生成 API 密钥
+- `MOCK_DREAMINA`：设为 `true` 开启模拟模式（不调用真实 API，5秒后返回占位图）
+- `DEV_MODE`：设为 `true` 显示开发菜单
+- `PROMPT_PHRASES`：快捷短语列表
+
+## 数据存储说明
+
+| 数据类型 | 存储位置 | 说明 |
+|---------|---------|------|
+| 业务数据 | `prisma/dev.db` | SQLite 数据库，包含项目、资产、任务等 |
+| 上传文件 | `public/uploads/YYYY/MM/DD/` | 本地文件系统 |
+| 设置项 | SQLite 数据库 `Setting` 表 | 键值对存储 |
+
+## 发布/分享前清理
+
+如果你需要将项目分享给别人（如上传到 GitHub），**必须先清理敏感数据**：
+
+```bash
+bash scripts/prepare-for-share.sh
+```
+
+该脚本会：
+- 删除 `.env` 文件（含 API Key）
+- 删除 `prisma/dev.db` 数据库
+- 清空 `public/uploads/` 用户上传文件
+- 删除 `.claude/` 本地配置
+- 清理 `.next/` 构建缓存
+
+**清理后接收方需要**：
+1. 运行 `bash scripts/setup.sh`（一键初始化）
+2. 配置自己的 API Key（编辑 `.env` 或在设置页配置）
+3. 运行 `bash scripts/start.sh`（一键启动）
+
+## 常见问题
+
+**Q: 创建资产时提示 500 错误**
+A: 运行 `npx prisma generate` 重新生成 Prisma Client，然后重启 dev 服务器。
+
+**Q: 图片显示 "文件缺失"**
+A: `public/uploads/` 下的文件被删除或移动。如果删除了资产/项目，文件本身不会被删除，但如果手动删除了 uploads 目录下的文件，就会出现此提示。
+
+**Q: 如何开启模拟模式测试 UI？**
+A: 在设置页将 `MOCK_DREAMINA` 设为 `true`，生成任务会在 5 秒后自动完成并返回占位图。
+
+**Q: 资产删除后文件还在吗？**
+A: 资产删除只删除数据库记录，不删除 `public/uploads/` 下的实际文件。这是为了防止误删导致其他引用处失效。
+
+## 技术栈
+
+- **框架**: Next.js 16 (App Router)
+- **语言**: TypeScript
+- **样式**: Tailwind CSS v4 + shadcn/ui
+- **数据库**: Prisma + SQLite
+- **状态管理**: Zustand
+- **图标**: Lucide React
+- **AI 接口**: 火山引擎方舟 (Seedance 2.0)
