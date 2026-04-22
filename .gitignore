@@ -47,3 +47,4 @@ next-env.d.ts
 
 # release builds
 Release/
+/prisma/prisma/dev.db
